@@ -10,7 +10,8 @@ def criterion(inputs, target, loss_weight=None, num_classes: int = 2, dice: bool
     for name, x in inputs.items():
         # 
         loss = torch.nn.CrossEntropyLoss(reduce=False)(x, target)
-        loss = torch.mean(loss*loss_weight)
+        loss = loss*loss_weight
+        loss = torch.mean(loss)
         if dice is True:
             dice_target = build_target(target, num_classes, ignore_index)
             loss += dice_loss(x, dice_target, multiclass=True, ignore_index=ignore_index)
