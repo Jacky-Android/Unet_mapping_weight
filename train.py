@@ -72,12 +72,12 @@ def main(args):
     results_file = "results{}.txt".format(datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
 
     train_dataset = DriveDataset(args.data_path,
-                                 seg="val",
+                                 seg="train",
                                  train=True,
                                  transforms=get_transform(train=True, mean=mean, std=std))
 
     val_dataset = DriveDataset(args.data_path,
-                               seg="test",
+                               seg="val",
                                train=False,
                                transforms=get_transform(train=False, mean=mean, std=std))
 
