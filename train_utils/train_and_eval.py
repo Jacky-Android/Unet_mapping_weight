@@ -4,7 +4,7 @@ import train_utils.distributed_utils as utils
 from .dice_coefficient_loss import dice_loss, build_target
 import os
 
-os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
+os.environ['CUDA_LAUNCH_BLOCKING'] = "0"
 def criterion(inputs, target, loss_weight=None, num_classes: int = 2, dice: bool = True, ignore_index: int = -100):
     losses = {}
     for name, x in inputs.items():
