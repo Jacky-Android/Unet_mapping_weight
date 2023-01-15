@@ -41,7 +41,6 @@ class DriveDataset(Dataset):
 
         if self.transforms is not None:
             img,mask= self.transforms(img,mask)
-        mask_wt = F.resize(mask_wt,300)
         return img, mask,mask_wt
 
     def __len__(self):
