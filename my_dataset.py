@@ -29,7 +29,9 @@ class DriveDataset(Dataset):
     def __getitem__(self, idx):
         img = Image.open(self.img_list[idx]).convert('RGB')
         mask = Image.open(self.roi_mask[idx])
-        mask_wt = torch.tensor(np.load(self.wt_list[idx]).astype(float))
+        mask = Image.open(self.roi_mask[idx])
+        mask_wt = np.load(self.wt_list[idx])
+        mask_wt = torch.tensor(mask_wt).resize_(320,320)
         
         if torch.max(mask_wt) > 0:
             mask_wt = mask_wt / torch.max(mask_wt)
