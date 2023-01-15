@@ -3,7 +3,7 @@ from PIL import Image
 import numpy as np
 from torch.utils.data import Dataset
 import torch 
-
+from torchvision.transforms import functional as F
 
 class DriveDataset(Dataset):
     def __init__(self, root: str, seg:str,train: bool, transforms=None):
@@ -39,8 +39,8 @@ class DriveDataset(Dataset):
 
         if self.transforms is not None:
             img,mask= self.transforms(img,mask)
-
-        return img, mask,mask_wt.reshape(320,320)
+        mask_wt = F.resize(mask_wt,300)
+        return img, mask,mask_wt
 
     def __len__(self):
         return len(self.img_list)
