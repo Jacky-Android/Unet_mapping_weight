@@ -6,16 +6,16 @@ def get_weights(target, w0, sigma, imsize):
     '''
     w0, sigma, C = _get_loss_variables(w0, sigma, imsize)
     distances = target
-    sizes = target
+    #sizes = target
     #print(distances.size())
     w1 = Variable(torch.ones(distances.size()), requires_grad=False)  # TODO: fix it to handle class imbalance
     if torch.cuda.is_available():
         w1 = w1.cuda()
-    size_weights = _get_size_weights(sizes, C)
+    #size_weights = _get_size_weights(sizes, C)
 
     distance_weights = _get_distance_weights(distances, w1, w0, sigma)
 
-    weights = distance_weights * size_weights
+    weights = distance_weights 
 
     return weights
 
