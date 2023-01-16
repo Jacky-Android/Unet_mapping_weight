@@ -12,11 +12,11 @@ def criterion(inputs, target, loss_weight=None, num_classes: int = 2, dice: bool
         loss = torch.nn.CrossEntropyLoss(reduce=False)(x, target)
        
         weight = get_weights(target, 10, 5, [320,320])
-        loss = loss*weight
-        loss = torch.mean(loss)
+        loss = loss.cuda()*weight.cuda()
+        loss = torch.mean(loss)*0.5
         if dice is True:
             dice_target = build_target(target, num_classes, ignore_index)
-            di_loss = dice_loss(x, dice_target, multiclass=True, ignore_index=ignore_index)
+            loss+ = dice_loss(x, dice_target, multiclass=True, ignore_index=ignore_index)*0.5
         losses[name] = loss
 
     if len(losses) == 1:
