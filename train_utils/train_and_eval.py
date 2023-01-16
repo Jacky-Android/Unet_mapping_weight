@@ -3,6 +3,7 @@ from torch import nn
 import train_utils.distributed_utils as utils
 from .dice_coefficient_loss import dice_loss, build_target
 import os
+from .weight import get_weights
 
 def criterion(inputs, target, loss_weight=None, num_classes: int = 2, dice: bool = True, ignore_index: int = -100):
     losses = {}
@@ -10,7 +11,8 @@ def criterion(inputs, target, loss_weight=None, num_classes: int = 2, dice: bool
         # 
         loss = torch.nn.CrossEntropyLoss(reduce=False)(x, target)
        
-        loss = loss*loss_weight
+        weight = get_weights(target, 10, 5, [320,320])
+        loss = loss*weight
         loss = torch.mean(loss)
         if dice is True:
             dice_target = build_target(target, num_classes, ignore_index)
