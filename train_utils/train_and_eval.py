@@ -16,7 +16,7 @@ def criterion(inputs, target, loss_weight=None, num_classes: int = 2, dice: bool
         loss = torch.mean(loss)
         if dice is True:
             dice_target = build_target(target, num_classes, ignore_index)
-            loss += dice_loss(x, dice_target, multiclass=True, ignore_index=ignore_index)
+            dice_loss = dice_loss(x, dice_target, multiclass=True, ignore_index=ignore_index)
         losses[name] = loss
 
     if len(losses) == 1:
