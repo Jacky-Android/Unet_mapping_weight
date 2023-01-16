@@ -39,7 +39,7 @@ def _get_size_weights(sizes, C):
 def _get_loss_variables(w0, sigma, imsize):
     w0 = Variable(torch.Tensor([w0]), requires_grad=False)
     sigma = Variable(torch.Tensor([sigma]), requires_grad=False)
-    C = Variable(torch.sqrt(torch.Tensor([imsize[0] * imsize[1]])) / 2, requires_grad=False)
+    C = Variable(torch.sqrt(torch.Tensor([imsize[1] * imsize[2]])) / 2, requires_grad=False)
     if torch.cuda.is_available():
         w0 = w0.cuda()
         sigma = sigma.cuda()
