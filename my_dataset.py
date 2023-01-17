@@ -4,6 +4,7 @@ import numpy as np
 from torch.utils.data import Dataset
 import torch 
 from torchvision.transforms import functional as F
+from my_weight import weight_add
 
 class DriveDataset(Dataset):
     def __init__(self, root: str, seg:str,train: bool, transforms=None):
@@ -30,11 +31,10 @@ class DriveDataset(Dataset):
         img = Image.open(self.img_list[idx]).convert('RGB')
         mask = Image.open(self.roi_mask[idx])
         mask = Image.open(self.roi_mask[idx])
-        mask_wt = np.load(self.wt_list[idx])
-        mask_wt = torch.tensor(mask_wt).resize_(320,320)
+        mask_wt = weight_add(self.roi_mask[idx]).astype(float)
+        mask_wt = torch.tensor(mask_wt)
         
-        if torch.max(mask_wt) > 0:
-            mask_wt = mask_wt / torch.max(mask_wt)
+        
         
         # 这里转回PIL的原因是，transforms中是对PIL数据进行处理
         #mask = Image.fromarray(np.array(mask.long()))
