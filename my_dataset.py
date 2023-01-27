@@ -4,6 +4,7 @@ import numpy as np
 from torch.utils.data import Dataset
 import torch 
 from torchvision.transforms import functional as F
+from torchvision import transforms as T
 from my_weight import weight_add
 
 class DriveDataset(Dataset):
@@ -30,17 +31,20 @@ class DriveDataset(Dataset):
     def __getitem__(self, idx):
         img = Image.open(self.img_list[idx]).convert('RGB')
         mask = Image.open(self.roi_mask[idx])
-        mask = Image.open(self.roi_mask[idx])
+        '''mask_wt = np.load(self.wt_list[idx])
+        mask_wt = torch.tensor(mask_wt).resize_(320,320)
+        
+        if torch.max(mask_wt) > 0:
+            mask_wt = mask_wt / torch.max(mask_wt)'''
         mask_wt = weight_add(self.roi_mask[idx]).astype(float)
         mask_wt = torch.tensor(mask_wt)
-        
-        
         
         # 这里转回PIL的原因是，transforms中是对PIL数据进行处理
         #mask = Image.fromarray(np.array(mask.long()))
 
         if self.transforms is not None:
             img,mask= self.transforms(img,mask)
+        
         return img, mask,mask_wt
 
     def __len__(self):
@@ -51,8 +55,8 @@ class DriveDataset(Dataset):
         images, targets,wt = list(zip(*batch))
         batched_imgs = cat_list(images, fill_value=0)
         batched_targets = cat_list(targets, fill_value=255)
-        batched_wt = cat_list(wt, fill_value=1)
-        return batched_imgs, batched_targets,batched_wt
+        batch_wt = cat_list(wt,fill_value=1)
+        return batched_imgs, batched_targets,batch_wt
 
 
 def cat_list(images, fill_value=0):
