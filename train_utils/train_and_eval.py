@@ -4,21 +4,31 @@ import train_utils.distributed_utils as utils
 from .dice_coefficient_loss import dice_loss, build_target
 import os
 from .weight import get_weights
+import torch
 
+
+
+os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
 def criterion(inputs, target, loss_weight=None, num_classes: int = 2, dice: bool = True, ignore_index: int = -100):
     losses = {}
     for name, x in inputs.items():
-        # 
+        #
+        #weight = get_weights(target, 10, 5, target.shape)
         loss = torch.nn.CrossEntropyLoss(reduce=False)(x, target)
-       
-        weight = get_weights(target, 10, 5, target.shape)
-        loss = loss.cuda()*weight.cuda()
+        
+        #loss = nn.functional.cross_entropy(x, target, ignore_index=ignore_index)
+        #loss = loss*(torch.mean(loss_weight))
+        loss = loss*loss_weight
+        
         loss = torch.mean(loss)
+       
+       
+        
         if dice is True:
             dice_target = build_target(target, num_classes, ignore_index)
-            #loss += dice_loss(x, dice_target, multiclass=True, ignore_index=ignore_index)
+            #dice = dice_loss(x, dice_target, multiclass=True, ignore_index=ignore_index)
         losses[name] = loss
-
+        
     if len(losses) == 1:
         return losses['out']
 
@@ -107,3 +117,4 @@ def create_lr_scheduler(optimizer,
             return (1 - (x - warmup_epochs * num_step) / ((epochs - warmup_epochs) * num_step)) ** 0.9
 
     return torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=f)
+
