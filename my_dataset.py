@@ -54,7 +54,7 @@ class DriveDataset(Dataset):
     def collate_fn(batch):
         images, targets,wt = list(zip(*batch))
         batched_imgs = cat_list(images, fill_value=0)
-        batched_targets = cat_list(targets, fill_value=255)
+        batched_targets = cat_list(targets, fill_value=0)
         batch_wt = cat_list(wt,fill_value=1)
         return batched_imgs, batched_targets,batch_wt
 
