@@ -14,7 +14,7 @@ def criterion(inputs, target, loss_weight=None, num_classes: int = 2, dice: bool
     for name, x in inputs.items():
         #
         #weight = get_weights(target, 10, 5, target.shape)
-        loss = torch.nn.CrossEntropyLoss(reduce=False)(x, target)
+        loss = torch.nn.CrossEntropyLoss(reduce=False,ignore_index=ignore_index)(x, target)
         
         #loss = nn.functional.cross_entropy(x, target, ignore_index=ignore_index)
         #loss = loss*(torch.mean(loss_weight))
