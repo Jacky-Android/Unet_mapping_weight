@@ -45,109 +45,109 @@ class CBAM(nn.Module):
         out = self.spatial_attention(out) * out
         return out
 
-class conv_block(nn.Module):
-    def __init__(self,ch_in,ch_out):
-        super(conv_block,self).__init__()
-        self.conv = nn.Sequential(
-            nn.Conv2d(ch_in, ch_out, kernel_size=3,stride=1,padding=1,bias=True),
-            nn.BatchNorm2d(ch_out),
+class DoubleConv(nn.Sequential):
+    def __init__(self, in_channels, out_channels, mid_channels=None):
+        if mid_channels is None:
+            mid_channels = out_channels
+        super(DoubleConv, self).__init__(
+            nn.Conv2d(in_channels, mid_channels, kernel_size=3, padding=1, bias=False),
+            nn.BatchNorm2d(mid_channels),
             nn.ReLU(inplace=True),
-            nn.Conv2d(ch_out, ch_out, kernel_size=3,stride=1,padding=1,bias=True),
-            nn.BatchNorm2d(ch_out),
+            nn.Conv2d(mid_channels, out_channels, kernel_size=3, padding=1, bias=False),
+            nn.BatchNorm2d(out_channels),
             nn.ReLU(inplace=True)
         )
 
-    def forward(self,x):
+
+class Down(nn.Sequential):
+    def __init__(self, in_channels, out_channels):
+        super(Down, self).__init__(
+            nn.MaxPool2d(2, stride=2),
+            DoubleConv(in_channels, out_channels)
+        )
+
+
+class Up(nn.Module):
+    def __init__(self, in_channels, out_channels, bilinear=True):
+        super(Up, self).__init__()
+        if bilinear:
+            self.up = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
+            self.conv = DoubleConv(in_channels, out_channels, in_channels // 2)
+        else:
+            self.up = nn.ConvTranspose2d(in_channels, in_channels // 2, kernel_size=2, stride=2)
+            self.conv = DoubleConv(in_channels, out_channels)
+
+    def forward(self, x1: torch.Tensor, x2: torch.Tensor) -> torch.Tensor:
+        x1 = self.up(x1)
+        # [N, C, H, W]
+        diff_y = x2.size()[2] - x1.size()[2]
+        diff_x = x2.size()[3] - x1.size()[3]
+
+        # padding_left, padding_right, padding_top, padding_bottom
+        x1 = F.pad(x1, [diff_x // 2, diff_x - diff_x // 2,
+                        diff_y // 2, diff_y - diff_y // 2])
+
+        x = torch.cat([x2, x1], dim=1)
         x = self.conv(x)
         return x
 
-class up_conv(nn.Module):
-    def __init__(self,ch_in,ch_out):
-        super(up_conv,self).__init__()
-        self.up = nn.Sequential(
-            nn.Upsample(scale_factor=2),
-            nn.Conv2d(ch_in,ch_out,kernel_size=3,stride=1,padding=1,bias=True),
-		    nn.BatchNorm2d(ch_out),
-			nn.ReLU(inplace=True)
+
+class OutConv(nn.Sequential):
+    def __init__(self, in_channels, num_classes):
+        super(OutConv, self).__init__(
+            nn.Conv2d(in_channels, num_classes, kernel_size=1)
         )
 
-    def forward(self,x):
-        x = self.up(x)
-        return x
 
-class U_Net_sc(nn.Module):   #添加了空间注意力和通道注意力
-    def __init__(self,img_ch=3,num_classes:int=2):
-        super(U_Net_sc,self).__init__()
-        
-        self.Maxpool = nn.MaxPool2d(kernel_size=2,stride=2)
+class U_Net_sc(nn.Module):
+    def __init__(self,
+                 in_channels: int = 3,
+                 num_classes: int = 2,
+                 bilinear: bool = True,
+                 base_c: int = 64):
+        super(U_Net_sc, self).__init__()
+        self.in_channels = in_channels
+        self.num_classes = num_classes
+        self.bilinear = bilinear
 
-        self.Conv1 = conv_block(ch_in=img_ch,ch_out=64) #64
-        self.Conv2 = conv_block(ch_in=64,ch_out=128)  #64 128
-        self.Conv3 = conv_block(ch_in=128,ch_out=256) #128 256
-        self.Conv4 = conv_block(ch_in=256,ch_out=512) #256 512
-        self.Conv5 = conv_block(ch_in=512,ch_out=1024) #512 1024
+        self.in_conv = DoubleConv(in_channels, base_c)
+        self.down1 = Down(base_c, base_c * 2)
+        self.down2 = Down(base_c * 2, base_c * 4)
+        self.down3 = Down(base_c * 4, base_c * 8)
+        factor = 2 if bilinear else 1
+        self.down4 = Down(base_c * 8, base_c * 16 // factor)
 
-        self.cbam1 = CBAM(channel=64)
-        self.cbam2 = CBAM(channel=128)
-        self.cbam3 = CBAM(channel=256)
-        self.cbam4 = CBAM(channel=512)
+        self.cbam1 = CBAM(channel=base_c)
+        self.cbam2 = CBAM(channel=base_c*2)
+        self.cbam3 = CBAM(channel=base_c * 4)
+        self.cbam4 = CBAM(channel=base_c * 8)
 
-        self.Up5 = up_conv(ch_in=1024,ch_out=512)  #1024 512
-        self.Up_conv5 = conv_block(ch_in=1024, ch_out=512)  
+        self.up1 = Up(base_c * 16, base_c * 8 // factor, bilinear)
+        self.up2 = Up(base_c * 8, base_c * 4 // factor, bilinear)
+        self.up3 = Up(base_c * 4, base_c * 2 // factor, bilinear)
+        self.up4 = Up(base_c * 2, base_c, bilinear)
+        self.out_conv = OutConv(base_c, num_classes)
 
-        self.Up4 = up_conv(ch_in=512,ch_out=256)  #512 256
-        self.Up_conv4 = conv_block(ch_in=512, ch_out=256)  
-        
-        self.Up3 = up_conv(ch_in=256,ch_out=128)  #256 128
-        self.Up_conv3 = conv_block(ch_in=256, ch_out=128) 
-        
-        self.Up2 = up_conv(ch_in=128,ch_out=64) #128 64
-        self.Up_conv2 = conv_block(ch_in=128, ch_out=64)  
+    def forward(self, x: torch.Tensor) -> Dict[str, torch.Tensor]:
+        x1 = self.in_conv(x)
+        x1 = self.cbam1(x1)+x1
+        x2 = self.down1(x1)
+        x2 = self.cbam2(x2)+x2
+        x3 = self.down2(x2)
+        x3 = self.cbam3(x3)+x3
+        x4 = self.down3(x3)
+        x4 = self.cbam4(x4)+x4
+        x5 = self.down4(x4)
+        x = self.up1(x5, x4)
+        x = self.up2(x, x3)
+        x = self.up3(x, x2)
+        x = self.up4(x, x1)
+        logits = self.out_conv(x)
 
-        self.Conv_1x1 = nn.Conv2d(64,num_classes,kernel_size=1,stride=1,padding=0)  #64
+        return {"out": logits}
 
 
-    def forward(self,x):
-        # encoding path
-        x1 = self.Conv1(x)
-        x1 = self.cbam1(x1) + x1
 
-        x2 = self.Maxpool(x1)
-        x2 = self.Conv2(x2)
-        x2 = self.cbam2(x2) + x2
-        
-        x3 = self.Maxpool(x2)
-        x3 = self.Conv3(x3)
-        x3 = self.cbam3(x3) + x3
-
-        x4 = self.Maxpool(x3)
-        x4 = self.Conv4(x4)
-        x4 = self.cbam4(x4) + x4
-
-        x5 = self.Maxpool(x4)
-        x5 = self.Conv5(x5)
-
-        # decoding + concat path
-        d5 = self.Up5(x5)
-        d5 = torch.cat((x4,d5),dim=1)
-        
-        d5 = self.Up_conv5(d5)
-        
-        d4 = self.Up4(d5)
-        d4 = torch.cat((x3,d4),dim=1)
-        d4 = self.Up_conv4(d4)
-
-        d3 = self.Up3(d4)
-        d3 = torch.cat((x2,d3),dim=1)
-        d3 = self.Up_conv3(d3)
-
-        d2 = self.Up2(d3)
-        d2 = torch.cat((x1,d2),dim=1)
-        d2 = self.Up_conv2(d2)
-
-        d1 = self.Conv_1x1(d2)
-
-        return {"out":d1}
 
 
 
