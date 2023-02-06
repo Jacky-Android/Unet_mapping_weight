@@ -10,3 +10,4 @@ from .unet_sc import U_Net_sc
 from .unet_selayer import U_Net_se
 from .unet_eca import U_Net_eca
 from .unet_test import convnextAttU_Net
+from .cc_unet import CC_U_Net
